@@ -1,232 +1,141 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>রিয়েল ড্রাগন — গ্যালাক্সি</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>3D Real Dragon — Galaxy</title>
 <style>
-  html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-  canvas{width:100vw;height:100vh;display:block}
-  /* SVG ড্রাগনের সাইজ/পজিশন */
-  .dragon-wrap{
-    position:fixed; left:50%; top:50%;
-    width:min(72vmin,700px); height:auto;
-    transform:translate(-50%,-50%) scale(1);
-    pointer-events:none;
-    filter: drop-shadow(0 12px 25px rgba(60,120,255,.35));
-  }
-  /* ডানা ফ্ল্যাপ অ্যানিমেশন */
-  @keyframes flapL { 0%{transform:rotate(-22deg)} 50%{transform:rotate(-58deg)} 100%{transform:rotate(-22deg)} }
-  @keyframes flapR { 0%{transform:rotate(22deg)}  50%{transform:rotate(58deg)}  100%{transform:rotate(22deg)}  }
-  .wingL{ transform-origin:420px 225px; animation:flapL 0.9s ease-in-out infinite; }
-  .wingR{ transform-origin:420px 225px; animation:flapR 0.9s ease-in-out infinite; }
-  .hint{position:fixed;left:10px;bottom:10px;background:rgba(10,14,35,.55);border:1px solid rgba(150,180,255,.25);
-        color:#cfe2ff;padding:8px 10px;border-radius:10px;font-size:12px;backdrop-filter:blur(6px)}
+  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  #app{position:fixed;inset:0}
+  .hud{position:fixed;left:10px;bottom:10px;color:#cfe2ff;background:rgba(10,14,35,.55);
+       border:1px solid rgba(150,180,255,.25);border-radius:12px;padding:8px 10px;font-size:12px;backdrop-filter:blur(6px)}
 </style>
 </head>
 <body>
-<canvas id="bg"></canvas>
+<div id="app"></div>
+<div class="hud">এক আঙুলে ঘোরাও · দুই আঙুলে জুম · ড্রাগন উড়বে/দুলবে · তারার মাঝে গ্যালাক্সি ✨</div>
 
-<!-- রিয়েল-লুকিং ড্রাগন (SVG) -->
-<svg class="dragon-wrap" viewBox="0 0 800 450" role="img" aria-label="উড়ন্ত নীল ড্রাগন">
-  <defs>
-    <linearGradient id="scaleBlue" x1="0" x2="1">
-      <stop offset="0" stop-color="#6fd3ff"/>
-      <stop offset="1" stop-color="#2a86ff"/>
-    </linearGradient>
-    <radialGradient id="belly" cx="45%" cy="55%" r="60%">
-      <stop offset="0" stop-color="#9fd7ff"/>
-      <stop offset="1" stop-color="#3a79ff"/>
-    </radialGradient>
-    <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#c8ecff" stop-opacity=".95"/>
-      <stop offset="1" stop-color="#76b8ff" stop-opacity=".2"/>
-    </radialGradient>
-  </defs>
+<script type="module">
+import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
+import { OrbitControls } from "https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "https://unpkg.com/three@0.158.0/examples/jsm/loaders/GLTFLoader.js";
 
-  <!-- লম্বা লেজ -->
-  <path d="M60,270
-           C120,250 190,245 250,250
-           C300,255 350,270 400,280
-           C470,295 540,300 610,290
-           C660,283 700,275 745,260
-           C700,290 650,315 595,330
-           C510,355 420,360 340,340
-           C260,320 180,300 110,295
-           C90,293 75,285 60,270 Z"
-        fill="url(#scaleBlue)" opacity=".9"/>
+// ---------- Renderer / Scene / Camera ----------
+const el = document.getElementById("app");
+const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:"high-performance" });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+el.appendChild(renderer.domElement);
 
-  <!-- দেহ + পেট -->
-  <path d="M260,240
-           C315,210 390,190 465,200
-           C520,208 560,225 600,250
-           C575,285 520,320 455,328
-           C390,336 315,315 270,285
-           C255,270 252,255 260,240 Z"
-        fill="url(#belly)"/>
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);
 
-  <!-- মাথা -->
-  <g transform="translate(610,220)">
-    <path d="M0,0
-             C25,-10 55,-10 80,0
-             C100,10 108,30 95,45
-             C85,58 60,62 38,55
-             C20,49 7,34 0,20 Z"
-          fill="url(#scaleBlue)"/>
-    <!-- শিং -->
-    <path d="M40,-12 L54,-28 L60,-20"
-          stroke="#cfe6ff" stroke-width="4" fill="none" stroke-linecap="round"/>
-    <path d="M28,-8 L40,-24 L46,-16"
-          stroke="#cfe6ff" stroke-width="4" fill="none" stroke-linecap="round"/>
-    <!-- চোখ -->
-    <circle cx="66" cy="20" r="7" fill="#0a1730"/>
-    <circle cx="66" cy="20" r="14" fill="url(#eyeGlow)" opacity=".45"/>
-    <!-- চোয়াল -->
-    <path d="M30,44 C55,48 78,48 98,40" stroke="#d9eeff" stroke-width="3" fill="none" stroke-linecap="round"/>
-  </g>
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 2000);
+camera.position.set(0, 1.2, 6);
 
-  <!-- ডানদিকের ডানা (R) -->
-  <g class="wingR">
-    <path d="M420,225
-             C520,170 610,165 690,185
-             C720,192 745,205 760,220
-             C710,230 665,250 625,275
-             C585,300 540,330 500,340
-             C505,300 470,260 420,225 Z"
-          fill="url(#scaleBlue)" opacity=".85" />
-    <!-- শিরা -->
-    <path d="M690,185 C640,210 600,245 560,285"
-          stroke="#bfe0ff" stroke-width="2.2" fill="none" opacity=".6"/>
-  </g>
+// ---------- Lights ----------
+const hemi = new THREE.HemisphereLight(0x88bbff, 0x0a0a18, 0.8);
+scene.add(hemi);
 
-  <!-- বাঁদিকের ডানা (L) -->
-  <g class="wingL">
-    <path d="M420,225
-             C505,185 560,180 620,193
-             C650,200 675,212 695,228
-             C655,240 620,262 585,285
-             C545,312 510,330 475,338
-             C482,306 455,262 420,225 Z"
-          fill="url(#scaleBlue)" opacity=".8"/>
-    <path d="M620,193 C585,220 550,250 515,300"
-          stroke="#bfe0ff" stroke-width="2" fill="none" opacity=".55"/>
-  </g>
-</svg>
+const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+dir.position.set(5, 8, 3);
+scene.add(dir);
 
-<div class="hint">টাচ/ড্র্যাগ করলে ড্রাগন সামান্য দিক ও গতি বদলাবে · ব্যাকগ্রাউন্ড: নেবুলা + ধূমকেতু + ৩ স্তরের তারা</div>
+const rim = new THREE.PointLight(0x66aaff, 0.8, 40);
+rim.position.set(-6, 2, -4);
+scene.add(rim);
 
-<script>
-/* ---------- Galaxy Background (parallax stars, nebula, comets) ---------- */
-(() => {
-  const cv = document.getElementById('bg');
-  const ctx = cv.getContext('2d', { alpha:false });
-
-  function fit(){
-    const dpr = Math.max(1, Math.min(2, devicePixelRatio||1));
-    cv.width = Math.floor(innerWidth*dpr);
-    cv.height= Math.floor(innerHeight*dpr);
-    ctx.setTransform(dpr,0,0,dpr,0,0);
+// ---------- Stars (parallax points) ----------
+function makeStars(n, spread, size){
+  const g = new THREE.BufferGeometry();
+  const p = new Float32Array(n*3);
+  for(let i=0;i<n;i++){
+    p[i*3+0] = (Math.random()-0.5)*spread;
+    p[i*3+1] = (Math.random()-0.5)*spread*0.6;
+    p[i*3+2] = (Math.random()-0.5)*spread;
   }
-  addEventListener('resize', fit, {passive:true}); fit();
+  g.setAttribute("position", new THREE.BufferAttribute(p, 3));
+  const m = new THREE.PointsMaterial({ color:0xffffff, size, sizeAttenuation:true, transparent:true, opacity:0.9 });
+  return new THREE.Points(g, m);
+}
+scene.add(makeStars(2000, 300, 0.02));
 
-  const TAU = Math.PI*2, R = (a=1,b=0)=>Math.random()*(a-b)+b, clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
-  // stars
-  const layers = [
-    { n:70,  speed:.05, size:[1.2,2.2], alpha:[.4,.9], pts:[] },
-    { n:110, speed:.12, size:[1.4,2.6], alpha:[.5,1.0], pts:[] },
-    { n:160, speed:.22, size:[1.6,3.0], alpha:[.6,1.0], pts:[] },
-  ];
-  const spawnStars=()=>layers.forEach(L=>L.pts=Array.from({length:L.n},()=>({x:R(innerWidth),y:R(innerHeight),r:R(L.size[1],L.size[0]),a0:R(TAU),z:R(1,.5)})));
-  spawnStars();
+// ---------- 3D Dragon (GLTF) ----------
+const loader = new GLTFLoader();
+// ওপেন-লাইসেন্স glTF স্যাম্পল ড্রাগন মডেল:
+const DRAGON_URL = "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DragonAttenuation/glTF/DragonAttenuation.gltf";
 
-  // nebula
-  const nebulas=[];
-  (()=>{
-    for(let i=0;i<6;i++){
-      nebulas.push({x:R(innerWidth),y:R(innerHeight),r:R(160,90),h:R(230,190),a:R(.08,.16),dx:R(.15,.05)*(Math.random()<.5?-1:1),dy:R(.10,.04)*(Math.random()<.5?-1:1),w:R(6,2),t:R(TAU)});
-    }
-  })();
-
-  // comets
-  const comets=[]; let cooldown=0;
-
-  let last=performance.now(), perf=0;
-  function frame(now){
-    const dt=Math.min(.05,(now-last)/1000); last=now; perf+=dt;
-
-    // bg
-    ctx.fillStyle="#000"; ctx.fillRect(0,0,innerWidth,innerHeight);
-
-    // nebulas
-    for(const n of nebulas){
-      n.x+=n.dx*dt*60; n.y+=n.dy*dt*60; n.t+=dt;
-      if(n.x<-n.r) n.x=innerWidth+n.r; if(n.x>innerWidth+n.r) n.x=-n.r;
-      if(n.y<-n.r) n.y=innerHeight+n.r; if(n.y>innerHeight+n.r) n.y=-n.r;
-      const rad=n.r*(.9+.1*Math.sin(n.t*n.w));
-      const g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,rad);
-      g.addColorStop(0,`hsla(${n.h},90%,70%,${n.a*1.4})`);
-      g.addColorStop(.5,`hsla(${n.h+10},80%,55%,${n.a})`);
-      g.addColorStop(1,`hsla(${n.h+30},70%,40%,0)`);
-      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(n.x,n.y,rad,0,TAU); ctx.fill();
-    }
-
-    // stars
-    for(const L of layers){
-      for(const s of L.pts){
-        s.x -= dt*60*L.speed*s.z;
-        if(s.x<-3){ s.x=innerWidth+3; s.y=R(innerHeight); }
-        const tw=(Math.sin(perf*2+s.a0)*.5+.5);
-        ctx.globalAlpha=clamp(L.alpha[0]+tw*(L.alpha[1]-L.alpha[0]),.25,1);
-        ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(s.x,s.y,s.r*(.85+.3*tw),0,TAU); ctx.fill();
+let dragon, clock = new THREE.Clock();
+loader.load(DRAGON_URL, (gltf) => {
+  dragon = gltf.scene;
+  // মডেল সামান্য নীল টিন্ট ও এমিসিভ গ্লো
+  dragon.traverse(o=>{
+    if(o.isMesh){
+      o.castShadow = o.receiveShadow = true;
+      if(o.material && o.material.color) {
+        o.material.color.offsetHSL(0.55, 0.1, 0.05); // নীলাভ
+        if("emissive" in o.material) {
+          o.material.emissive = new THREE.Color(0x0a2a6a);
+          o.material.emissiveIntensity = 0.25;
+        }
       }
     }
-    ctx.globalAlpha=1;
+  });
+  dragon.scale.set(1.2,1.2,1.2);
+  dragon.position.set(0, 0, 0);
+  dragon.rotation.set(0, Math.PI, 0); // সামনে তাকানো
+  scene.add(dragon);
+}, undefined, (err) => {
+  console.error(err);
+  const t = document.createElement("div");
+  t.style.cssText = "position:fixed;left:10px;top:10px;color:#ffb3b3;background:#330;padding:6px 8px;border-radius:8px;font-size:12px";
+  t.textContent = "মডেল লোড হয়নি (নেটওয়ার্ক/CORS)। পরে আবার রিফ্রেশ দিন।";
+  document.body.appendChild(t);
+});
 
-    // comets
-    cooldown-=dt;
-    if(cooldown<=0){ cooldown=R(8,12); const y=R(innerHeight*.85,innerHeight*.15); comets.push({x:innerWidth+60,y,vx:-R(360,260),vy:R(-40,40),life:R(2.5,1.8),tail:[]}); }
-    for(let i=comets.length-1;i>=0;i--){
-      const k=comets[i]; k.life-=dt; k.x+=k.vx*dt; k.y+=k.vy*dt; k.tail.unshift({x:k.x,y:k.y}); if(k.tail.length>40) k.tail.pop();
-      if(k.life<=0||k.x<-120) comets.splice(i,1);
-    }
-    for(const k of comets){
-      for(let i=0;i<k.tail.length;i++){
-        const p=k.tail[i], t=1-i/k.tail.length;
-        ctx.globalAlpha=t*.6; const grd=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,18*t+4);
-        grd.addColorStop(0,'rgba(180,220,255,.8)'); grd.addColorStop(1,'rgba(100,160,255,0)');
-        ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(p.x,p.y,18*t+4,0,TAU); ctx.fill();
-      }
-      ctx.globalAlpha=1; ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(k.x,k.y,2.2,0,TAU); ctx.fill();
-    }
+// ---------- Controls ----------
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 2.5;
+controls.maxDistance = 12;
+controls.target.set(0,0.6,0);
 
-    requestAnimationFrame(frame);
+// ---------- Animate (fly/bob) ----------
+let t = 0;
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  t += dt;
+
+  // ড্রাগনের ফ্লাইট-পাথ (ধীরে বৃত্তে ঘুরে + দোল)
+  if (dragon){
+    const R = 2.2;
+    const speed = 0.4;                // উড়ার গতি
+    dragon.position.x = Math.cos(t*speed) * R;
+    dragon.position.z = Math.sin(t*speed) * R;
+    dragon.position.y = Math.sin(t*1.8) * 0.25 + 0.3;
+    // দিক অনুযায়ী ঘোরানো
+    const lookAt = new THREE.Vector3(
+      Math.cos((t+0.02)*speed)*R,
+      dragon.position.y,
+      Math.sin((t+0.02)*speed)*R
+    );
+    dragon.lookAt(lookAt);
   }
-  requestAnimationFrame(frame);
-})();
 
-/* ---------- ড্রাগনের সামান্য মুভ কন্ট্রোল (টাচ/ড্র্যাগ) ---------- */
-(() => {
-  const wrap = document.querySelector('.dragon-wrap');
-  let tx = 0, ty = 0, vx = 0, vy = 0, dragging=false;
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
 
-  function setFromTouch(e){
-    const t = e.touches[0];
-    const nx = (t.clientX / innerWidth - .5) * 2;  // -1..1
-    const ny = (t.clientY / innerHeight - .5) * 2;
-    vx = nx * 12; vy = ny * 8;
-  }
-  addEventListener('touchstart', e=>{ dragging=true; setFromTouch(e); }, {passive:true});
-  addEventListener('touchmove',  e=>{ if(dragging) setFromTouch(e); }, {passive:true});
-  addEventListener('touchend',   ()=>{ dragging=false; }, {passive:true});
-
-  function loop(){
-    tx += (vx - tx) * 0.06;
-    ty += (vy - ty) * 0.06;
-    wrap.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
-    requestAnimationFrame(loop);
-  }
-  loop();
-})();
+// ---------- Resize ----------
+addEventListener("resize", ()=>{
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 </body>
 </html>
