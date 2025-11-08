@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>নীল ড্রাগন উড়ছে</title>
+<style>
+  body { margin:0; overflow:hidden; background:black; }
+  canvas { width:100vw; height:100vh; display:block; }
+</style>
+</head>
+<body>
+<canvas id="space"></canvas>
+<script>
+const c=document.getElementById("space"),ctx=c.getContext("2d");
+function resize(){c.width=innerWidth;c.height=innerHeight}
+addEventListener("resize",resize);resize();
+let stars=[...Array(220)].map(()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*2}));
+let t=0;
+function draw(){
+  ctx.fillStyle="black";ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle="white";
+  for(const s of stars){ctx.globalAlpha=0.35+Math.random()*0.65;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,2*Math.PI);ctx.fill();}
+  ctx.globalAlpha=1;
+  const x=c.width/2+Math.sin(t/50)*200,y=c.height/2+Math.cos(t/80)*100;
+  ctx.save();ctx.translate(x,y);ctx.scale(1.6,1.6);ctx.rotate(Math.sin(t/30)*0.1);
+  const g=ctx.createRadialGradient(0,0,5,0,0,55);
+  g.addColorStop(0,"#5ac8ff");g.addColorStop(1,"transparent");
+  ctx.fillStyle=g;
+  ctx.beginPath();ctx.moveTo(-60,0);ctx.quadraticCurveTo(-20,22,40,0);ctx.quadraticCurveTo(-20,-22,-60,0);ctx.fill();
+  ctx.beginPath();ctx.moveTo(20,0);ctx.quadraticCurveTo(40,-30,80,-10);ctx.quadraticCurveTo(60,10,20,0);
+  ctx.fillStyle="#79c6ff";ctx.fill();
+  ctx.restore();
+  t++;requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
