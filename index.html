@@ -1,218 +1,132 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>Goku vs Dragon — Fire & Power</title>
-<style>
-  html,body{margin:0;height:100%;overflow:hidden;background:#000;font-family:system-ui}
-  #hud{position:fixed;left:10px;bottom:10px;color:#cfe2ff;background:rgba(10,14,35,.55);
-       border:1px solid rgba(150,180,255,.25);border-radius:12px;padding:8px 10px;font-size:12px;backdrop-filter:blur(6px)}
-  #music{position:fixed;right:10px;bottom:10px;padding:10px 14px;border-radius:12px;border:1px solid rgba(150,180,255,.25);
-         background:rgba(10,14,35,.6);color:#cfe2ff;font-weight:600}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goku vs Dragon Battle</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #000015, #000);
+    }
+    #musicBtn {
+      position: fixed;
+      bottom: 15px;
+      right: 15px;
+      background: rgba(0, 0, 50, 0.7);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 16px;
+    }
+    #info {
+      position: fixed;
+      bottom: 15px;
+      left: 15px;
+      background: rgba(0, 0, 50, 0.7);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+  </style>
 </head>
 <body>
-<div id="hud">অটো ব্যাটল চলছে · ক্যামেরা ফিক্সড</div>
-<button id="music">▶ Play music</button>
+  <button id="musicBtn">▶️ Play Music</button>
+  <div id="info">🔥 অটো ব্যাটল চলছে · ক্যামেরা ফ্রিকুয়েন্সি মোড</div>
 
-<script type="module">
-import * as THREE from "https://unpkg.com/three@0.158.0/build/three.module.js";
-import { GLTFLoader }   from "https://unpkg.com/three@0.158.0/examples/jsm/loaders/GLTFLoader.js";
-import { EffectComposer } from "https://unpkg.com/three@0.158.0/examples/jsm/postprocessing/EffectComposer.js";
-import { RenderPass }     from "https://unpkg.com/three@0.158.0/examples/jsm/postprocessing/RenderPass.js";
-import { UnrealBloomPass }from "https://unpkg.com/three@0.158.0/examples/jsm/postprocessing/UnrealBloomPass.js";
+  <audio id="bgm" loop>
+    <source src="https://github.com/alpha-x-infinity/blue-dragon/releases/download/v2/deprezz--Vois.Sur.Ton.Chemin.MP3_160K.mp3" type="audio/mpeg">
+  </audio>
 
-/* ---------- আপনার ফাইল লিংক ---------- */
-const DRAGON_URL = "https://github.com/alpha-x-infinity/blue-dragon/releases/download/v1/deathwing_-_world_of_warcraft.glb";
-const GOKU_URL   = "https://github.com/alpha-x-infinity/blue-dragon/releases/download/v1/goku.glb";
-const AUDIO_URL  = "https://github.com/alpha-x-infinity/blue-dragon/releases/download/v2/deprezz--Vois.Sur.Ton.Chemin.MP3_160K.mp3";
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
-/* ---------- বেসিক সেটআপ (কোনো OrbitControls নেই) ---------- */
-const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:"high-performance" });
-renderer.setPixelRatio(Math.min(2, devicePixelRatio||1));
-renderer.setSize(innerWidth, innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-document.body.appendChild(renderer.domElement);
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+    const ambient = new THREE.AmbientLight(0x5555ff, 1.5);
+    scene.add(ambient);
+    const point = new THREE.PointLight(0xffffff, 2);
+    point.position.set(0, 10, 10);
+    scene.add(point);
 
-const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 2000);
-camera.position.set(0, 1.2, 11);
+    const stars = new THREE.BufferGeometry();
+    const starCount = 1000;
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i++) starPositions[i] = (Math.random() - 0.5) * 500;
+    stars.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+    const starMaterial = new THREE.PointsMaterial({ color: 0xffffff });
+    scene.add(new THREE.Points(stars, starMaterial));
 
-/* ---------- লাইট + স্টারস ---------- */
-scene.add(new THREE.HemisphereLight(0x8fbaff, 0x0a0a18, 1.0));
-const key = new THREE.DirectionalLight(0xffffff, 1.2); key.position.set(6,8,6); scene.add(key);
-const rimL= new THREE.PointLight(0x66aaff, 1.1, 120); rimL.position.set(-8,2,-6); scene.add(rimL);
-const rimR= new THREE.PointLight(0xff8844, 0.9, 120); rimR.position.set(8,1,-4); scene.add(rimR);
+    const loader = new THREE.GLTFLoader();
+    let dragon, goku;
 
-function stars(N=2400,S=420){
-  const g=new THREE.BufferGeometry(), a=new Float32Array(N*3);
-  for(let i=0;i<N;i++){ a[i*3]=(Math.random()-.5)*S; a[i*3+1]=(Math.random()-.5)*S*.6; a[i*3+2]=(Math.random()-.5)*S; }
-  g.setAttribute("position", new THREE.BufferAttribute(a,3));
-  const p=new THREE.Points(g, new THREE.PointsMaterial({color:0xffffff,size:0.03,opacity:.9,transparent:true}));
-  p.userData.rot=0.0004; return p;
-}
-const starField=stars(); scene.add(starField);
-const fog=new THREE.Mesh(new THREE.PlaneGeometry(400,400), new THREE.MeshBasicMaterial({color:0x0b1022, transparent:true, opacity:.35}));
-fog.rotation.x=-Math.PI/2; fog.position.y=-1.15; scene.add(fog);
+    loader.load("https://github.com/alpha-x-infinity/blue-dragon/releases/download/v1/deathwing_-_world_of_warcraft.glb",
+      function (gltf) {
+        dragon = gltf.scene;
+        dragon.scale.set(1.8, 1.8, 1.8);
+        dragon.position.set(5, 0, 0);
+        scene.add(dragon);
+      });
 
-/* ---------- পোস্ট-প্রসেসিং ---------- */
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.65, 0.4, 0.85);
-composer.addPass(bloom);
+    loader.load("https://github.com/alpha-x-infinity/blue-dragon/releases/download/v1/goku.glb",
+      function (gltf) {
+        goku = gltf.scene;
+        goku.scale.set(1.8, 1.8, 1.8);
+        goku.position.set(-5, 0, 0);
+        scene.add(goku);
+      });
 
-/* ---------- স্প্রাইট টেক্সচার (আগুন/নীল পাওয়ার) ---------- */
-function makeTex(inner, outer){
-  const S=256, c=document.createElement('canvas'); c.width=c.height=S;
-  const x=c.getContext('2d'), g=x.createRadialGradient(S/2,S/2,10,S/2,S/2,S/2);
-  g.addColorStop(0,inner); g.addColorStop(1,outer);
-  x.fillStyle=g; x.beginPath(); x.arc(S/2,S/2,S/2,0,Math.PI*2); x.fill();
-  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t;
-}
-const texFlame = makeTex("rgba(255,210,120,1)","rgba(255,70,30,0)");
-const texSmoke = makeTex("rgba(210,230,255,.28)","rgba(10,20,40,0)");
-const texBlue  = makeTex("rgba(180,220,255,1)","rgba(40,110,255,0)");
+    const fireGeo = new THREE.SphereGeometry(0.3, 16, 16);
+    const fireMat = new THREE.MeshBasicMaterial({ color: 0xff5500 });
+    const fireball = new THREE.Mesh(fireGeo, fireMat);
+    scene.add(fireball);
 
-/* ---------- মডেল লোড ---------- */
-const loader=new GLTFLoader();
-let dragon, goku, dragonMouth=new THREE.Object3D(), gokuHand=new THREE.Object3D();
+    const energyGeo = new THREE.SphereGeometry(0.3, 16, 16);
+    const energyMat = new THREE.MeshBasicMaterial({ color: 0x00aaff });
+    const energyBall = new THREE.Mesh(energyGeo, energyMat);
+    scene.add(energyBall);
 
-function dragonFallback(){
-  const g=new THREE.Group();
-  const m=new THREE.MeshStandardMaterial({color:0x3fa9f5, metalness:.25, roughness:.5, emissive:0x001133});
-  const body=new THREE.Mesh(new THREE.CapsuleGeometry(1.2,2.8,10,20),m); body.rotation.x=Math.PI/2; g.add(body);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(0.75,16,16),m); head.position.set(0,0,2.1); g.add(head);
-  const wingGeo=new THREE.ConeGeometry(1.9,3.6,12,1,true);
-  const wingMat=new THREE.MeshStandardMaterial({color:0x78c7ff, side:THREE.DoubleSide, transparent:true, opacity:.75});
-  const wl=new THREE.Mesh(wingGeo,wingMat); wl.position.set(-1,0,0.8); wl.rotation.set(Math.PI/2,0,Math.PI/3);
-  const wr=wl.clone(); wr.position.x*=-1; wr.rotation.z*=-1; g.add(wl,wr);
-  dragonMouth.position.set(0,0,2.6); g.add(dragonMouth);
-  return g;
-}
-function gokuFallback(){
-  const g=new THREE.Group();
-  const skin=new THREE.MeshStandardMaterial({color:0xffefd8, roughness:0.6});
-  const suit=new THREE.MeshStandardMaterial({color:0x9ed1ff, metalness:0.1, roughness:0.5, emissive:0x0a1f55, emissiveIntensity:0.2});
-  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(0.6,1.2,6,12),suit); g.add(torso);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(0.35,16,16),skin); head.position.set(0,0.95,0.1); g.add(head);
-  const arm=new THREE.Mesh(new THREE.CapsuleGeometry(0.18,0.8,6,12),skin); arm.position.set(0.7,0.2,0.2); arm.rotation.z=-0.4; g.add(arm);
-  gokuHand.position.set(1.1,0.1,0.25); g.add(gokuHand);
-  return g;
-}
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    camera.position.z = 15;
 
-loader.load(DRAGON_URL, g=>{ dragon=g.scene; dragon.scale.set(1.25,1.25,1.25); dragon.position.set(-3.4,-0.2,0); dragon.rotation.y=Math.PI/2; dragon.add(dragonMouth); dragonMouth.position.set(1.8,0.4,0.4); scene.add(dragon); },
-  undefined, ()=>{ dragon=dragonFallback(); dragon.position.set(-3.4,-0.2,0); dragon.rotation.y=Math.PI/2; scene.add(dragon); });
+    let time = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 0.02;
 
-loader.load(GOKU_URL, g=>{ goku=g.scene; goku.scale.set(1.1,1.1,1.1); goku.position.set(3.4,-0.4,0); goku.rotation.y=-Math.PI/2; goku.add(gokuHand); gokuHand.position.set(-1.2,0.6,0.2); scene.add(goku); },
-  undefined, ()=>{ goku=gokuFallback(); goku.position.set(3.4,-0.4,0); goku.rotation.y=-Math.PI/2; scene.add(goku); });
+      if (dragon) dragon.rotation.y += 0.01;
+      if (goku) goku.rotation.y -= 0.01;
 
-/* ---------- FX + অটো-ব্যাটল ---------- */
-const sprites=[], flames=[], smokes=[], balls=[], effects=[];
-function sprite(tex,size,add=true,color=0xffffff){
-  const mat=new THREE.SpriteMaterial({ map:tex, color, transparent:true, depthWrite:false,
-    blending:add?THREE.AdditiveBlending:THREE.NormalBlending });
-  const s=new THREE.Sprite(mat); s.scale.set(size,size,1); scene.add(s); sprites.push(s); return s;
-}
-function spawnFlame(){
-  if(!dragon) return;
-  const p=dragonMouth.getWorldPosition(new THREE.Vector3());
-  for(let i=0;i<12;i++){
-    const sp=sprite(texFlame, 0.65+Math.random()*0.55, true);
-    sp.position.copy(p);
-    sp.userData={vx:0.28+Math.random()*0.7, vy:(Math.random()-0.5)*0.35, vz:(Math.random()-0.5)*0.35, life:0.9+Math.random()*0.6, type:"flame"};
-    flames.push(sp);
-  }
-  const sm=sprite(texSmoke, 1.3+Math.random()*0.9, false);
-  sm.position.copy(p); sm.userData={vx:0.18, vy:0.1, vz:(Math.random()-0.5)*0.25, life:1.9, type:"smoke"}; smokes.push(sm);
-}
-function spawnBall(){
-  if(!goku) return;
-  const p=gokuHand.getWorldPosition(new THREE.Vector3());
-  const core=new THREE.Mesh(new THREE.SphereGeometry(0.25,16,16), new THREE.MeshBasicMaterial({color:0x9ed0ff}));
-  core.position.copy(p);
-  core.userData={vx:-1.2, vy:(Math.random()-0.5)*0.12, vz:(Math.random()-0.5)*0.12, life:3.5, type:"ball"};
-  scene.add(core); balls.push(core);
-}
-function explode(pos){
-  const ring=new THREE.Mesh(new THREE.RingGeometry(0.2,0.25,64),
-    new THREE.MeshBasicMaterial({color:0xcfeaff, transparent:true, opacity:1, side:THREE.DoubleSide, blending:THREE.AdditiveBlending}));
-  ring.rotation.x=-Math.PI/2; ring.position.copy(pos); ring.userData={t:0, type:"ring"}; scene.add(ring); effects.push(ring);
-  for(let i=0;i<24;i++){ const sp=sprite(texBlue, 0.5+Math.random()*0.4, true);
-    sp.position.copy(pos); sp.userData={vx:(Math.random()-0.5)*1.4, vy:(Math.random()-0.2)*1.0, vz:(Math.random()-0.5)*1.4, life:0.9, type:"spark"}; effects.push(sp); }
-  shakeTime=0.35;
-}
+      fireball.position.set(5 - Math.sin(time) * 10, Math.sin(time * 3) * 0.5, 0);
+      energyBall.position.set(-5 + Math.sin(time) * 10, Math.sin(time * 3) * 0.5, 0);
 
-let fireCD=0, ballCD=0, shakeTime=0;
-const clock=new THREE.Clock(), TMP=new THREE.Vector3();
+      camera.position.x = Math.sin(time * 0.3) * 10;
+      camera.position.z = Math.cos(time * 0.3) * 15;
+      camera.lookAt(0, 0, 0);
 
-function animate(){
-  requestAnimationFrame(animate);
-  const dt=Math.min(0.033, clock.getDelta());
-  const t=clock.elapsedTime;
-
-  starField.rotation.y += 0.0004;
-  if(dragon) dragon.position.y = -0.2 + Math.sin(t*1.8)*0.08;
-  if(goku)   goku.position.y   = -0.4 + Math.sin(t*2.0+1.2)*0.06;
-
-  fireCD-=dt; ballCD-=dt;
-  if(fireCD<=0 && dragon){ spawnFlame(); fireCD=0.12; }
-  if(ballCD<=0 && goku){ spawnBall(); ballCD=0.65+Math.random()*0.4; }
-
-  for(let i=flames.length-1;i>=0;i--){ const s=flames[i], u=s.userData; u.life-=dt; s.position.x+=u.vx; s.position.y+=u.vy; s.position.z+=u.vz;
-    s.scale.multiplyScalar(0.985); s.material.opacity=Math.max(0,u.life); if(u.life<=0){ scene.remove(s); flames.splice(i,1); } }
-  for(let i=smokes.length-1;i>=0;i--){ const s=smokes[i], u=s.userData; u.life-=dt; s.position.x+=u.vx; s.position.y+=u.vy; s.position.z+=u.vz;
-    s.scale.multiplyScalar(1.01); s.material.opacity=Math.max(0,u.life*0.5); if(u.life<=0){ scene.remove(s); smokes.splice(i,1); } }
-
-  for(let i=balls.length-1;i>=0;i--){
-    const b=balls[i], u=b.userData; u.life-=dt;
-    b.position.x+=u.vx; b.position.y+=u.vy; b.position.z+=u.vz;
-    const tr=sprite(texBlue,0.6,true); tr.position.copy(b.position); tr.userData={life:0.25, type:"trail"}; effects.push(tr);
-    if(flames.length){
-      let fx=0,fy=0,fz=0; const n=Math.min(flames.length,20);
-      for(let k=0;k<n;k++){ const p=flames[k].position; fx+=p.x; fy+=p.y; fz+=p.z; }
-      TMP.set(fx/n, fy/n, fz/n);
-      if(b.position.distanceTo(TMP)<1.1){
-        explode(b.position.clone());
-        scene.remove(b); balls.splice(i,1);
-        for(let k=flames.length-1;k>=0;k--){ if(flames[k].position.distanceTo(b.position)<1.6){ scene.remove(flames[k]); flames.splice(k,1); } }
-        continue;
-      }
+      renderer.render(scene, camera);
     }
-    if(u.life<=0 || b.position.x<-9){ scene.remove(b); balls.splice(i,1); }
-  }
+    animate();
 
-  for(let i=effects.length-1;i>=0;i--){
-    const e=effects[i], u=e.userData;
-    if(u.type==="ring"){ u.t+=dt*1.8; e.scale.setScalar(1+u.t*5); e.material.opacity=Math.max(0,1-u.t); if(u.t>=1){ scene.remove(e); effects.splice(i,1); } }
-    else { u.life-=dt; e.material.opacity=Math.max(0,u.life); if(u.vx){ e.position.x+=u.vx; e.position.y+=u.vy; e.position.z+=u.vz; }
-           if(u.life<=0){ scene.remove(e); effects.splice(i,1); } }
-  }
-
-  if(shakeTime>0){ shakeTime-=dt; const s=shakeTime*0.6;
-    camera.position.x += (Math.random()-0.5)*s;
-    camera.position.y += (Math.random()-0.5)*s*0.6;
-  }
-
-  composer.render();
-}
-animate();
-
-addEventListener("resize", ()=>{
-  renderer.setSize(innerWidth, innerHeight);
-  composer.setSize(innerWidth, innerHeight);
-  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
-});
-
-/* ---------- মিউজিক ---------- */
-const audio = new Audio(AUDIO_URL); audio.loop=true; audio.preload="none";
-const btn = document.getElementById('music');
-btn.addEventListener('click', async ()=>{
-  try{ await audio.play(); btn.textContent="⏸ Pause"; }
-  catch(e){ alert("ব্রাউজার গান চালাতে দিচ্ছে না—একবার স্ক্রিন ট্যাপ করে আবার Play চাপুন."); }
-});
-</script>
+    document.getElementById("musicBtn").onclick = () => {
+      const bgm = document.getElementById("bgm");
+      if (bgm.paused) {
+        bgm.play();
+        musicBtn.innerText = "⏸ Pause Music";
+      } else {
+        bgm.pause();
+        musicBtn.innerText = "▶️ Play Music";
+      }
+    };
+  </script>
 </body>
 </html>
