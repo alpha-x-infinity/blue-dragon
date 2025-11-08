@@ -38,4 +38,246 @@
   // --- Starfield (3 parallax layers) ---
   const layers = [
     { n: 70,  speed: .05, size:[1.2,2.2], alpha:[.4,.9], pts:[] }, // far
-    { n: 110, speed: .12, size:[1.4,2.6], alpha:[.5,
+    { n: 110, speed: .12, size:[1.4,2.6], alpha:[.5,1.0], pts:[] }, // mid
+    { n: 160, speed: .22, size:[1.6,3.0], alpha:[.6,1.0], pts:[] }, // near
+  ];
+  function spawnStars() {
+    layers.forEach(L=>{
+      L.pts = Array.from({length:L.n}, ()=>({
+        x: rand(innerWidth), y: rand(innerHeight),
+        r: rand(L.size[1], L.size[0]),
+        a0: rand(Math.PI*2), z: rand(1, .5)
+      }));
+    });
+  }
+  spawnStars();
+
+  function drawStars(dt) {
+    layers.forEach(L=>{
+      for(const s of L.pts){
+        s.x -= dt * 60 * L.speed * s.z;
+        if(s.x < -3){ s.x = innerWidth + 3; s.y = rand(innerHeight); }
+        const tw = (Math.sin(perf*2 + s.a0) * .5 + .5);
+        ctx.globalAlpha = clamp(L.alpha[0] + tw*(L.alpha[1]-L.alpha[0]), .25, 1);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r*(.85+.3*tw), 0, TAU); ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1;
+  }
+
+  // --- Nebula (soft drifting blobs, no external images) ---
+  const nebulas = [];
+  function spawnNebula() {
+    const count = 6;
+    for(let i=0;i<count;i++){
+      nebulas.push({
+        x: rand(innerWidth), y: rand(innerHeight),
+        r: rand(160, 90),
+        hue: rand(230, 190), // bluish-violet
+        alpha: rand(.08,.16),
+        dx: rand(.15, .05) * (Math.random()<.5?-1:1),
+        dy: rand(.10, .04) * (Math.random()<.5?-1:1),
+        wob: rand(6,2), seed: rand(TAU)
+      });
+    }
+  }
+  spawnNebula();
+
+  function drawNebula(dt){
+    for(const n of nebulas){
+      n.x += n.dx * dt * 60;
+      n.y += n.dy * dt * 60;
+      n.seed += dt;
+      if(n.x < -n.r) n.x = innerWidth + n.r;
+      if(n.x > innerWidth + n.r) n.x = -n.r;
+      if(n.y < -n.r) n.y = innerHeight + n.r;
+      if(n.y > innerHeight + n.r) n.y = -n.r;
+
+      const rad = n.r * (0.9 + 0.1*Math.sin(n.seed*n.wob));
+      const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, rad);
+      // soft core→edge
+      g.addColorStop(0, `hsla(${n.hue}, 90%, 70%, ${n.alpha*1.4})`);
+      g.addColorStop(.5, `hsla(${n.hue+10}, 80%, 55%, ${n.alpha})`);
+      g.addColorStop(1, `hsla(${n.hue+30}, 70%, 40%, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(n.x, n.y, rad, 0, TAU); ctx.fill();
+    }
+  }
+
+  // --- Comets ---
+  const comets = [];
+  let cometCooldown = 0;
+  function maybeSpawnComet(dt){
+    cometCooldown -= dt;
+    if(cometCooldown <= 0){
+      cometCooldown = rand(8, 12); // seconds
+      const y = rand(innerHeight*0.85, innerHeight*0.15);
+      comets.push({
+        x: innerWidth + 60, y,
+        vx: -rand(360, 260), vy: rand(-40, 40),
+        life: rand(2.5, 1.8), tail: []
+      });
+    }
+  }
+  function updateComets(dt){
+    for(let i=comets.length-1;i>=0;i--){
+      const cmt = comets[i];
+      cmt.life -= dt;
+      cmt.x += cmt.vx * dt;
+      cmt.y += cmt.vy * dt;
+      cmt.tail.unshift({x:cmt.x, y:cmt.y, a:1});
+      if(cmt.tail.length>40) cmt.tail.pop();
+      if(cmt.life<=0 || cmt.x < -120) comets.splice(i,1);
+    }
+  }
+  function drawComets(){
+    for(const cmt of comets){
+      // tail
+      for(let i=0;i<cmt.tail.length;i++){
+        const p = cmt.tail[i];
+        const t = 1 - i / cmt.tail.length;
+        ctx.globalAlpha = t * 0.6;
+        const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 18*t+4);
+        grd.addColorStop(0, 'rgba(180,220,255,.8)');
+        grd.addColorStop(1, 'rgba(100,160,255,0)');
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(p.x, p.y, 18*t+4, 0, TAU); ctx.fill();
+      }
+      // head
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(cmt.x, cmt.y, 2.2, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // --- Dragon (blue, animated wings) ---
+  const dragon = {
+    t: 0, speed: 60, flap: 3.0, altitude: .35, x: 0, y: 0
+  };
+
+  let touchX = null, touchY = null;
+  // simple touch drag to bias altitude & speed
+  addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    touchX = t.clientX; touchY = t.clientY;
+  }, {passive:true});
+  addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    touchX = t.clientX; touchY = t.clientY;
+  }, {passive:true});
+  addEventListener('touchend', ()=>{ touchX = touchY = null; }, {passive:true});
+
+  function dragonPathX(tms){
+    const w = innerWidth;
+    return (w + 260) - (tms % (w + 520));
+  }
+  function dragonPathY(tms){
+    const h = innerHeight;
+    const base = h * (0.15 + dragon.altitude * 0.7);
+    return base + Math.sin(tms * 0.003) * h * 0.08;
+  }
+
+  function drawDragon(x,y,sc,heading,time){
+    ctx.save(); ctx.translate(x,y); ctx.rotate(heading); ctx.scale(sc,sc);
+
+    // body glow
+    const glow = ctx.createRadialGradient(0,0,5,0,0,60);
+    glow.addColorStop(0,'#66c8ff'); glow.addColorStop(1,'rgba(30,60,130,0)');
+    // tail
+    ctx.beginPath();
+    ctx.moveTo(-90,6);
+    ctx.bezierCurveTo(-130,20,-170,8,-215,2);
+    ctx.bezierCurveTo(-245,-6,-280,-14,-315,-8);
+    ctx.lineWidth=12; ctx.strokeStyle='#3da1ff'; ctx.lineCap='round'; ctx.stroke();
+
+    // body
+    ctx.beginPath();
+    ctx.moveTo(-70,10);
+    ctx.quadraticCurveTo(-15,30,35,18);
+    ctx.quadraticCurveTo(58,10,72,0);
+    ctx.quadraticCurveTo(58,-10,35,-18);
+    ctx.quadraticCurveTo(-15,-30,-70,-10);
+    ctx.closePath(); ctx.fillStyle=glow; ctx.fill();
+
+    // head
+    ctx.save(); ctx.translate(78,-2); ctx.rotate(Math.sin(time*2)*.05);
+    ctx.fillStyle='#79c6ff';
+    ctx.beginPath(); ctx.ellipse(0,0,16,10,0,0,TAU); ctx.fill();
+    ctx.fillStyle='#00162e'; ctx.beginPath(); ctx.arc(4,-2,2,0,TAU); ctx.fill();
+    ctx.strokeStyle='#bfe3ff'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(8,-9); ctx.lineTo(16,-16); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(1,-10); ctx.lineTo(8,-18); ctx.stroke();
+    ctx.restore();
+
+    // wings
+    const flap = Math.sin(time*dragon.flap*TAU)*.6+.4;
+    function wing(side){
+      ctx.save(); ctx.scale(side,1); ctx.translate(10,-8); ctx.rotate(-0.6 + flap * -0.9);
+      const gr = ctx.createLinearGradient(0,0,92,0);
+      gr.addColorStop(0,'rgba(180,220,255,.95)');
+      gr.addColorStop(1,'rgba(70,140,255,.55)');
+      ctx.fillStyle=gr;
+      ctx.beginPath();
+      ctx.moveTo(0,0);
+      ctx.quadraticCurveTo(32,-22-flap*8,66,-10);
+      ctx.quadraticCurveTo(88,5,92,12);
+      ctx.quadraticCurveTo(60,8,18,16+flap*10);
+      ctx.closePath();
+      ctx.shadowColor='rgba(80,140,255,.5)'; ctx.shadowBlur=18;
+      ctx.fill(); ctx.restore();
+    }
+    wing(1); wing(-1);
+
+    // tiny sparkles near tail
+    for(let i=0;i<5;i++){
+      const a=time*12+i*.7, rx=-85-Math.random()*55, ry=Math.sin(a)*6;
+      ctx.globalAlpha=.28+Math.random()*.3; ctx.fillStyle='#8ad1ff';
+      ctx.beginPath(); ctx.arc(rx,ry,Math.random()*1.7+.6,0,TAU); ctx.fill();
+    }
+    ctx.globalAlpha=1; ctx.restore();
+  }
+
+  // --- Main loop ---
+  let last = performance.now(), perf = 0;
+  function tick(now){
+    const dt = Math.min(.05, (now-last)/1000); last = now; perf += dt;
+
+    // touch bias (speed & altitude)
+    if(touchX!=null && touchY!=null){
+      dragon.altitude = clamp(touchY/innerHeight, 0, 1);
+      const targetSpeed = 40 + (1 - touchX/innerWidth) * 140;
+      dragon.speed += (targetSpeed - dragon.speed) * Math.min(1, dt*3);
+    } else {
+      // ease back to default
+      dragon.speed += (60 - dragon.speed) * Math.min(1, dt*0.5);
+    }
+
+    // background
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0,innerWidth,innerHeight);
+
+    // galaxy layers
+    drawNebula(dt);
+    drawStars(dt);
+
+    // comets
+    maybeSpawnComet(dt);
+    updateComets(dt);
+    drawComets();
+
+    // dragon position/orientation
+    dragon.t += dt * 1000 * (dragon.speed/60);
+    const px = dragonPathX(dragon.t);
+    const py = dragonPathY(dragon.t);
+    const px2 = dragonPathX(dragon.t + 12*(dragon.speed/60));
+    const py2 = dragonPathY(dragon.t + 12*(dragon.speed/60));
+    const heading = Math.atan2(py2-py, px2-px);
+    drawDragon(px, py, 1.15, heading, perf);
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
